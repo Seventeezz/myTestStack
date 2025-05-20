@@ -25,8 +25,63 @@ def main():
     play_against_slumbot(bot, name, password)
 
 
-def play_against_slumbot(bot, slumbot_acc_name, slumbot_acc_password):
+def play_against_slumbot(bot, name, password):
+    # 初始化 WebDriver
+    driver = webdriver.Chrome()
+    try:
+        # 打开登录页面
+        driver.get("https://www.pokernow.club/")
+        
+        # 使用新的 Selenium 语法
+        signup_button = driver.find_element(By.ID, "login_trigger")
+        signup_button.click()
+        
+        # 等待登录表单加载
+        time.sleep(2)
+        
+        # 输入用户名和密码
+        username_input = driver.find_element(By.NAME, "username")
+        password_input = driver.find_element(By.NAME, "password")
+        
+        username_input.send_keys(name)
+        password_input.send_keys(password)
+        
+        # 点击登录按钮
+        login_button = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
+        login_button.click()
+        
+        # 等待游戏加载
+        time.sleep(5)
+        
+        # 开始游戏循环
+        while True:
+            try:
+                # 检查是否有行动
+                action_buttons = driver.find_elements(By.CLASS_NAME, "action-button")
+                if action_buttons:
+                    # 获取当前游戏状态
+                    pot_size = get_pot_size(driver)
+                    board = get_board(driver)
+                    hand = get_hand(driver)
+                    
+                    # 获取 AI 的行动
+                    action = bot.get_action(pot_size, board, hand)
+                    
+                    # 执行行动
+                    execute_action(driver, action)
+                
+                time.sleep(1)
+            except Exception as e:
+                print(f"游戏循环中出错: {str(e)}")
+                break
+                
+    except Exception as e:
+        print(f"发生错误: {str(e)}")
+    finally:
+        driver.quit()
 
+
+def play_against_slumbot(bot, slumbot_acc_name, slumbot_acc_password):
     slumbot_utils = SlumBotUtils()
 
     driver = webdriver.Chrome()
@@ -35,11 +90,11 @@ def play_against_slumbot(bot, slumbot_acc_name, slumbot_acc_password):
     time.sleep(2)
     driver.execute_script(slumbot_utils.response_fun)
 
-    signup_button = driver.find_element_by_id("login_trigger")
+    signup_button = driver.find_element(By.ID, "login_trigger")
     signup_button.click()
     time.sleep(1)
-    name = driver.find_element_by_id("loginname")
-    password = driver.find_element_by_id("loginpw")
+    name = driver.find_element(By.ID, "loginname")
+    password = driver.find_element(By.ID, "loginpw")
     name.send_keys(slumbot_acc_name)
     time.sleep(0.5)
     password.send_keys(slumbot_acc_password)
@@ -58,9 +113,9 @@ def play_against_slumbot(bot, slumbot_acc_name, slumbot_acc_password):
         player_is_small_blind = True
         while True:
             print(1)
-            fold_button = driver.find_element_by_id("fold")
-            nexthand_button = driver.find_element_by_id("nexthand")
-            action_td = driver.find_element_by_id("currentaction")
+            fold_button = driver.find_element(By.ID, "fold")
+            nexthand_button = driver.find_element(By.ID, "nexthand")
+            action_td = driver.find_element(By.ID, "currentaction")
 
             if fold_button.is_displayed() and fold_button.is_enabled():
                 if action_td.text:
@@ -72,25 +127,23 @@ def play_against_slumbot(bot, slumbot_acc_name, slumbot_acc_password):
 
         hand = driver.execute_script("return global_data[\"holes\"]")
         card1, card2 = hand[:2], hand[2:]
-        # print('STARTING NEW HAND', hand, is_small_blind)
         bot.start_new_hand(card1, card2, player_is_small_blind)
         bot_bet = 50 if player_is_small_blind else 100
 
-        # new hand
         while True:
-            nexthand_button = driver.find_element_by_id("nexthand")
+            nexthand_button = driver.find_element(By.ID, "nexthand")
             if nexthand_button.is_displayed() and nexthand_button.is_enabled():
                 break
             hole = driver.execute_script("return global_data[\"holes\"]")
             actions = driver.execute_script("return global_data[\"action\"]")
             board = driver.execute_script("return global_data[\"board\"]")
 
-            fold_button = driver.find_element_by_id("fold")
-            call_button = driver.find_element_by_id("call")
-            check_button = driver.find_element_by_id("check")
-            halfpot_button = driver.find_element_by_id("halfpot")
-            pot_button = driver.find_element_by_id("pot")
-            allin_button = driver.find_element_by_id("allin")
+            fold_button = driver.find_element(By.ID, "fold")
+            call_button = driver.find_element(By.ID, "call")
+            check_button = driver.find_element(By.ID, "check")
+            halfpot_button = driver.find_element(By.ID, "halfpot")
+            pot_button = driver.find_element(By.ID, "pot")
+            allin_button = driver.find_element(By.ID, "allin")
 
             while True:
                 if (call_button.is_displayed() and call_button.is_enabled()) or (allin_button.is_displayed() and allin_button.is_enabled()):
@@ -129,7 +182,6 @@ def play_against_slumbot(bot, slumbot_acc_name, slumbot_acc_password):
                     bot_bet = 300
                 else:
                     bot_bet = opponent_bet * 2 + opponent_bet
-
             else:
                 print('ERROR: folding')
                 fold_button.click()
@@ -269,8 +321,36 @@ class SlumBotUtils:
         return "/".join(streets), max_bet
 
 
+def get_pot_size(driver):
+    # 获取当前底池大小
+    pot_element = driver.find_element(By.CLASS_NAME, "pot-size")
+    return float(pot_element.text.replace("$", "").replace(",", ""))
 
+def get_board(driver):
+    # 获取公共牌
+    board_elements = driver.find_elements(By.CLASS_NAME, "community-card")
+    return [card.get_attribute("data-card") for card in board_elements]
 
+def get_hand(driver):
+    # 获取手牌
+    hand_elements = driver.find_elements(By.CLASS_NAME, "player-card")
+    return [card.get_attribute("data-card") for card in hand_elements]
+
+def execute_action(driver, action):
+    # 执行行动（跟注、加注或弃牌）
+    if action == "fold":
+        fold_button = driver.find_element(By.CLASS_NAME, "fold-button")
+        fold_button.click()
+    elif action == "call":
+        call_button = driver.find_element(By.CLASS_NAME, "call-button")
+        call_button.click()
+    else:  # raise
+        raise_button = driver.find_element(By.CLASS_NAME, "raise-button")
+        raise_button.click()
+        # 设置加注金额
+        raise_input = driver.find_element(By.CLASS_NAME, "raise-amount")
+        raise_input.clear()
+        raise_input.send_keys(str(action))
 
 if __name__ == '__main__':
     main()

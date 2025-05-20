@@ -17,22 +17,57 @@ class ValueNn():
 		@param: str  :approximate current street "root_nodes"/"leaf_nodes"
 		@param: int  :display output if >0
 		'''
+		# 初始化 graph
+		self.graph = tf.get_default_graph()
+		
 		# set directories
 		self.approximate = approximate # set to approximate leaf or root nodes of specified street
 		street_name = card_to_string.street_to_name(street)
 		self.model_dir_path = os.path.join(arguments.model_path, street_name)
 		model_name = '{}.{}.hdf5'.format(arguments.model_filename, self.approximate)
 		self.model_path = os.path.join(self.model_dir_path, model_name)
+		print("--------------------------------")
+		if os.path.exists(self.model_dir_path):
+			print(f"Files in directory: {os.listdir(self.model_dir_path)}")
+		
 		# set input, output shapes
 		self._set_shapes()
-		# load model or create one
-		if pretrained_weights:
-			self.keras_model = tf.keras.models.load_model( self.model_path,
-								   custom_objects = {'loss':BasicHuberLoss(delta=1.0),
-													 'masked_huber_loss':masked_huber_loss} )
-			self.graph = tf.get_default_graph()
-		else: # create keras model
+		
+		# 创建模型
+		with self.graph.as_default():
 			self.keras_model = self._build_net()
+			self.keras_model.compile(
+				optimizer='adam',
+				loss=BasicHuberLoss(delta=1.0),
+				metrics=[masked_huber_loss]
+			)
+			
+			# 如果存在预训练权重，则加载
+			if pretrained_weights and os.path.exists(self.model_path):
+				try:
+					print(f"Loading model from: {self.model_path}")
+					# 使用 tf.keras.models.load_model 加载模型
+					self.keras_model = tf.keras.models.load_model(
+						self.model_path,
+						custom_objects={
+							'loss': BasicHuberLoss(delta=1.0),
+							'masked_huber_loss': masked_huber_loss
+						},
+						compile=False  # 不编译模型，因为我们已经编译过了
+					)
+					# 重新编译模型
+					self.keras_model.compile(
+						optimizer='adam',
+						loss=BasicHuberLoss(delta=1.0),
+						metrics=[masked_huber_loss]
+					)
+					print("Model loaded successfully")
+				except Exception as e:
+					print(f"Error loading model: {str(e)}")
+					print("Using randomly initialized weights instead...")
+			else:
+				print("Using randomly initialized weights...")
+				
 		# print architecture summary
 		if verbose > 0:
 			print('NN architecture:')
@@ -44,12 +79,20 @@ class ValueNn():
 		@param: [b,nnI] :tensor containing b batches instances of neural net inputs
 		@param: [b,nnO] :tensor in which to store b batches of neural net outputs
 		'''
-		with self.graph.as_default():
-			total_elements, batch_size = inputs.shape[0], 10000
-			for i in range(0, total_elements, batch_size):
-				start, end = i, i + batch_size
-				end = end if end < total_elements else total_elements
-				out[ start:end, : ] = self.keras_model.predict_on_batch(inputs[ start:end, : ])
+		try:
+			with self.graph.as_default():
+				total_elements, batch_size = inputs.shape[0], 10000
+				for i in range(0, total_elements, batch_size):
+					start, end = i, i + batch_size
+					end = end if end < total_elements else total_elements
+					# 确保输入数据是 float32 类型
+					batch_inputs = tf.cast(inputs[start:end, :], tf.float32)
+					prediction = self.keras_model.predict_on_batch(batch_inputs)
+					out[start:end, :] = prediction
+		except Exception as e:
+			print(f"Error during prediction: {str(e)}")
+			# 如果预测失败，返回零值
+			out.fill(0)
 
 
 	def _set_shapes(self):

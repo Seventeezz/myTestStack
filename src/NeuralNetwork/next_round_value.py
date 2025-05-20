@@ -10,7 +10,8 @@ from Settings.constants import constants
 from Game.card_tools import card_tools
 from Game.card_to_string_conversion import card_to_string
 from Game.card_combinations import card_combinations
-from NeuralNetwork.value_nn import ValueNn
+# from NeuralNetwork.value_nn import ValueNn
+from NeuralNetwork.value_nn_torch import ValueNn
 
 class NextRoundValue():
 	def __init__(self, street, skip_iterations, leaf_nodes_iterations=0):
@@ -21,13 +22,26 @@ class NextRoundValue():
 		'''
 		self.street = street
 		# setting up neural network for root nodes of next street and current street leaf nodes
-		self.next_street_nn = ValueNn(street+1, approximate='root_nodes', pretrained_weights=True, verbose=0)
+		print("--------------------------------")
 		try:
+			print(f"Loading root node model for street {street+1}")
+			self.next_street_nn = ValueNn(street+1, approximate='root_nodes', pretrained_weights=True, verbose=0)
+			# print("Root node model loaded successfully")
+		except Exception as e:
+			print(f"WARNING: Failed to load root node model for street '{card_to_string.street_to_name(street+1)}': {str(e)}")
+			print("Using simple approximation instead.")
+			self.next_street_nn = None
+			
+		try:
+			print(f"Loading leaf node model for street {street}")
 			self.leaf_nodes_nn = ValueNn(street, approximate='leaf_nodes', pretrained_weights=True, verbose=0)
+			# print("Leaf node model loaded successfully")
 			self.num_leaf_nodes_approximation_iters = leaf_nodes_iterations
-		except:
-			self.leaf_nodes_nn, self.num_leaf_nodes_approximation_iters = None, 0
-			print( "WARNING: leaf node model for street '{}' was not found. using only next street root nodes".format(card_to_string.street_to_name(street)) )
+		except Exception as e:
+			print(f"WARNING: Failed to load leaf node model for street '{card_to_string.street_to_name(street)}': {str(e)}")
+			print("Using simple approximation instead.")
+			self.leaf_nodes_nn = None
+			self.num_leaf_nodes_approximation_iters = 0
 
 
 	def _init_root_approximation_vars(self):
@@ -111,21 +125,30 @@ class NextRoundValue():
 		PC, HC, batch_size = constants.players_count, constants.hand_count, self.batch_size
 		assert(ranges.shape[0] == self.batch_size)
 		self.iter += 1
-		# check to approximate leafs or next street nodes + avg them
-		if self.iter > self.num_leaf_nodes_approximation_iters:
+		
+		# 如果两个模型都不可用，使用简单的替代方案
+		if self.next_street_nn is None and self.leaf_nodes_nn is None:
+			# 返回一个简单的均匀分布
+			return np.zeros_like(ranges)
+			
+		# 检查是近似叶子还是下一街节点 + 对其进行平均
+		if self.iter > self.num_leaf_nodes_approximation_iters and self.next_street_nn is not None:
 			BC = self.next_boards_count
 			neural_network = self.next_street_nn
 			nn_inputs = self.next_round_inputs
 			nn_outputs = self.next_round_values
 			mask = self.next_boards_mask
 			sum_normalization = self.root_nodes_sum_normalization
-		else:
+		elif self.leaf_nodes_nn is not None:
 			BC = 1
 			neural_network = self.leaf_nodes_nn
 			nn_inputs = self.current_round_inputs
 			nn_outputs = self.current_round_values
 			mask = self.current_board_mask
 			sum_normalization = self.leaf_nodes_sum_normalization
+		else:
+			# 如果两个模型都不可用，返回零值
+			return np.zeros_like(ranges)
 		# copy ranges for all boards (BC)
 		ranges = ranges.reshape([batch_size,1,PC,HC]) # [b,P,I] -> [b,1,P,I]
 		ranges = np.repeat(ranges, BC, axis=1) # [b,1,P,I] -> [b,B,P,I]
@@ -144,7 +167,7 @@ class NextRoundValue():
 		nn_inputs[ : , : , :PC*HC ] = ranges.reshape([batch_size,BC,PC*HC])
 		del ranges
 		# computing value in the next round (outputs are already masked, see neural network)
-		neural_network.predict( nn_inputs.reshape([batch_size*BC,-1]), out=nn_outputs.reshape([batch_size*BC,-1]) )
+		neural_network.predict(nn_inputs.reshape([batch_size*BC,-1]), out_np=nn_outputs.reshape([batch_size*BC,-1]))
 		# normalizing values back to original range sum
 		nn_outputs *= values_norm.reshape([batch_size,BC,PC,1]) # [b,B,P,I] *= [b,1,P,1]
 		# clip values that are more then maximum
@@ -178,11 +201,12 @@ class NextRoundValue():
 NEXT_ROUND_VALUES = {}
 for street in range(1,4):
 	street_name = card_to_string.street_to_name(street)
+	print(f"street_name:{street_name}")
 	try:
 		NEXT_ROUND_VALUES[street] = NextRoundValue( street, skip_iterations=arguments.cfr_skip_iters,
 													leaf_nodes_iterations=arguments.leaf_nodes_iterations[street_name] )
 	except:
-		print("Didin't found {} neural network... In case if this street's nn is not needed, program will not stop.")
+		print(f"Didin't found {street_name} neural network... In case if this street's nn is not needed, program will not stop.")
 
 def get_next_round_value(street):
 	return NEXT_ROUND_VALUES[street]

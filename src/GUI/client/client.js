@@ -1,11 +1,21 @@
 // setup starting stacks
-let STACK = 20000
+// let STACK = 20000
+let STACK = 1200
 $("#player_chips").text(STACK)
 $("#opponent_chips").text(STACK)
 
 // setup sockets with server
 let SERVER_ADDRESS = 'http://localhost:8000'
-let socket = io.connect(SERVER_ADDRESS)
+let socket = io(SERVER_ADDRESS, {
+    transports: ['websocket', 'polling'],
+    upgrade: true,
+    rememberUpgrade: true,
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
+    forceNew: true
+})
+
 
 $('#buttons_and_slider').hide()
 $('#error').hide()

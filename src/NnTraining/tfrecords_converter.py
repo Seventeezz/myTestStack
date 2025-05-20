@@ -109,6 +109,7 @@ class TFRecordsConverter():
 		# convert lists to np arrays
 		X = np.array(X)
 		Y = np.array(Y)
+		print(Y)
 		# shuffle X,Y
 		indexes = np.arange(len(X))
 		np.random.shuffle(indexes)

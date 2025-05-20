@@ -10,11 +10,10 @@ from Settings.arguments import arguments
 from Settings.constants import constants
 from Game.card_tools import card_tools
 from Game.card_combinations import card_combinations
-from Game.card_to_string_conversion import card_to_string
 from DataGeneration.range_generator import RangeGenerator
 from TerminalEquity.terminal_equity import TerminalEquity
-from NeuralNetwork.value_nn import ValueNn
-from Lookahead.lookahead import Lookahead
+# from NeuralNetwork.value_nn import ValueNn
+from NeuralNetwork.value_nn_torch import ValueNn
 from Lookahead.resolving import Resolving
 from helper_classes import Node
 
