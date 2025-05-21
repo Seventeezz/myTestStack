@@ -32,16 +32,20 @@ class StrategyFilling():
 		BCC, PC = constants.board_card_count, constants.players_count
 		HC = constants.hand_count
 		assert (not node.terminal)
-		# we will fill strategy with an uniform probability, but it has to be
-		# zero for hands that are not possible on corresponding board
-		num_boards = card_combinations.choose(CC - HCC * PC, BCC[node.street] - BCC[node.street-1])
+
+		# 为每轮计算牌数
+		num_new_cards = BCC[node.street] - BCC[node.street-1]
+		# 每张新牌的概率是1/总牌数
+		probability_per_card = 1.0 / CC
+		# 每个子节点的概率是所有新牌概率的乘积
+		outcome_probability = probability_per_card ** num_new_cards
+
 		node.strategy = np.zeros([len(node.children), HC], dtype=arguments.dtype)
 		# setting probability of impossible hands to 0
 		for i in range(len(node.children)):
 			child_node = node.children[i]
 			mask = card_tools.get_possible_hands_mask(child_node.board)
-			# remove 2 because each player holds one card
-			node.strategy[i][mask] = 1.0 / (CC - 2)
+			node.strategy[i][mask] = outcome_probability
 
 
 	def _fill_uniformly(self, node):

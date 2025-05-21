@@ -3,23 +3,27 @@
 '''
 import os
 import numpy as np
+import torch
 
+from Game.card_tools import card_tools
 from TerminalEquity.evaluator import evaluator
 from Settings.arguments import arguments
 from Settings.constants import constants
-from Game.card_tools import card_tools
 from Game.card_combinations import card_combinations
 
 class TerminalEquity():
 	def __init__(self):
 		# load preflop matrix
-		self._pf_equity = np.load('src/TerminalEquity/matrices/pf_equity.npy')
-		# load card blocking matrix from disk if exists
-		if os.path.exists('src/TerminalEquity/matrices/block_matrix.npy'):
-			self._block_matrix = np.load('src/TerminalEquity/matrices/block_matrix.npy')
-		else:
-			self._block_matrix = self._create_block_matrix()
+		# 创建单私牌冲突矩阵
+		self._block_matrix = self._create_block_matrix()
 
+	def _create_block_matrix(self):
+		''' 创建单私牌冲突矩阵（双方私牌不能相同）'''
+		HC = constants.hand_count
+		out = np.ones([HC, HC], dtype=bool)
+		# 对角线为冲突（同一张牌）
+		np.fill_diagonal(out, False)
+		return out
 
 	def set_board(self, board):
 		''' Sets the board cards for the evaluator and creates internal data structures
@@ -28,7 +32,22 @@ class TerminalEquity():
 		self.board, street, HC = board, card_tools.board_to_street(board), constants.hand_count
 		# set equity matrix
 		if street == 1:
-			self.equity_matrix = self._pf_equity
+			# 初始化权益矩阵
+			self.equity_matrix = np.zeros([HC, HC], dtype=arguments.dtype)
+
+			# 获取所有可能的3张牌组合（可重复）
+			next_three_round_boards = card_tools.get_all_round_boards_combinations()  # 形状：[729, 3]
+			boards_count = next_three_round_boards.shape[0]
+
+			# 用于存储每个 board 对应的临时权益矩阵
+			next_round_equity_matrix = np.zeros((constants.card_count, constants.card_count), dtype=arguments.dtype)
+
+			for board in range(boards_count):
+				board_cards = next_three_round_boards[board]
+				self.get_last_round_call_matrix(board_cards, next_round_equity_matrix)  # 应该是 in-place 修改
+				self.equity_matrix += next_round_equity_matrix
+			# 平均化权益矩阵
+			self.equity_matrix /= boards_count
 		elif street == constants.streets_count:
 			self.equity_matrix = np.zeros([HC,HC], dtype=arguments.dtype)
 			self._set_last_round_equity_matrix(self.equity_matrix, board)
@@ -75,27 +94,6 @@ class TerminalEquity():
 		return np.sum(self.equity_matrix, axis=0)
 
 
-	def _create_block_matrix(self):
-		''' Creates boolean mask matrix for hands, that cannot be available
-			if particular cards where used. (ex: if hand1 is 'KsQs', then all
-			hand combinations with 'Ks' or 'Qs' should not be available)
-		@return [I,I] :boolean mask for possible hands
-		'''
-		HC, CC = constants.hand_count, constants.card_count
-		out = np.ones([HC,HC], dtype=bool)
-		for p1_card1 in range(CC):
-			for p1_card2 in range(p1_card1+1, CC):
-				p1_idx = card_tools.get_hand_index([p1_card1, p1_card2])
-				for p2_card1 in range(CC):
-					for p2_card2 in range(p2_card1+1, CC):
-						p2_idx = card_tools.get_hand_index([p2_card1, p2_card2])
-						if p1_card1 == p2_card1 or p1_card1 == p2_card2 or \
-						   p1_card2 == p2_card1 or p1_card2 == p2_card2:
-						   out[p1_idx, p2_idx] = 0
-						   out[p2_idx, p1_idx] = 0
-		return out
-
-
 	def _set_last_round_equity_matrix(self, equity_matrix, board_cards):
 		''' Constructs the matrix that turns player ranges into showdown equity.
 			Gives the matrix `A` such that for player ranges `x` and `y`, `x'Ay`
@@ -113,6 +111,30 @@ class TerminalEquity():
 		equity_matrix[:,:]  = (strength_view_1 > strength_view_2).astype(int)
 		equity_matrix[:,:] -= (strength_view_1 < strength_view_2).astype(int)
 
+	def get_last_round_call_matrix(self, board_cards, call_matrix):
+		"""
+        构建将玩家 range 转化为对决收益 (showdown equity) 的矩阵。
+
+        Parameters:
+            board_cards: 一个非空的公共牌向量，形如 [a, b, c]
+            call_matrix: 预分配好的 NumPy 数组，用来写入结果，形状为 (card_count, card_count)
+        """
+		# 计算所有手牌的强度 (胜率)
+		strength: np.ndarray = evaluator.evaluate_board(board_cards)  # 返回 shape: (card_count,)
+
+		# 构造两个视图以对比所有手牌之间的胜负关系
+		strength_view_1 = strength.reshape(-1, 1)  # shape: (card_count, 1)
+		strength_view_2 = strength.reshape(1, -1)  # shape: (1, card_count)
+
+		# 胜负关系计算
+		gt_mask = (strength_view_1 > strength_view_2).astype(call_matrix.dtype)
+		lt_mask = (strength_view_1 < strength_view_2).astype(call_matrix.dtype)
+
+		# call_matrix = 1 (胜) - 1 (负) = 1, -1, 0
+		np.copyto(call_matrix, gt_mask - lt_mask)
+
+		# 处理 blocker（阻断手牌）
+		self._handle_blocking_cards(call_matrix, board_cards)
 
 	def _set_transitioning_equity_matrix(self, equity_matrix, last_round_boards, street):
 		''' Constructs the matrix that turns player ranges into showdown equity.
@@ -148,17 +170,12 @@ class TerminalEquity():
 		equity_matrix[:,:] *= (1 / num_possible_boards)
 
 
-
 	def _handle_blocking_cards(self, matrix, board):
 		''' Zeroes entries in an equity matrix that correspond to invalid hands.
 			A hand is invalid if it shares any cards with the board
 		@param: [I,I] :matrix that needs to be modified
 		@param: [0-5] :vector of board cards
 		'''
-		HC, CC = constants.hand_count, constants.card_count
-		possible_hand_indexes = card_tools.get_possible_hands_mask(board)
-		matrix[:,:] *= possible_hand_indexes.reshape([1,HC])
-		matrix[:,:] *= possible_hand_indexes.reshape([HC,1])
 		matrix[:,:] *= self._block_matrix
 
 

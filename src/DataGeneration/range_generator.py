@@ -10,7 +10,8 @@ from Game.card_tools import card_tools
 
 class RangeGenerator():
 	def __init__(self):
-		pass
+		# 定义基础分值 (J=4, Q=5, K=6)
+		self.base_scores = np.array([4] * 3 + [5] * 3 + [6] * 3, dtype=np.float32)
 
 	def _generate_recursion(self, cards, mass):
 		''' Recursively samples a section of the range vector

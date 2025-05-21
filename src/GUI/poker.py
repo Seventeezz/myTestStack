@@ -1,8 +1,8 @@
-
 import collections
 import random
 import numpy as np
 
+from TerminalEquity.evaluator import evaluator
 from TerminalEquity.terminal_equity import TerminalEquity
 from Game.card_to_string_conversion import card_to_string
 from Game.card_tools import card_tools
@@ -14,8 +14,8 @@ class DoylesGame():
 		self.bot = bot
 		self.logger = logger
 		self.terminal_equity = TerminalEquity() # evaluator
-		self.player_hand = ['NO','NO']
-		self.bot_hand = ['NO','NO']
+		self.player_private = ['NO']
+		self.bot_private = ['NO']
 		self.stack = 20000
 		self.ante = 100
 		self.sb = 50
@@ -23,30 +23,34 @@ class DoylesGame():
 		self.street = 0
 
 	def get_new_shuffled_deck(self):
-		ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
-		suits = ['c', 'd', 'h', 's']
-		deck = collections.deque()
+		ranks = ['J', 'Q', 'K']
+		suits = ['h', 's', 'd']  # h=红桃, s=黑桃, d=方块
+		deck = []
 		for s in suits:
 			for r in ranks:
-				deck.append( '{}{}'.format(r,s) )
-		random.shuffle(deck)
+				deck.append('{}{}'.format(r,s))
 		return deck
 
 	def start_round(self, starting_player='player'):
-		# shuffle deck + draw hands for each player + log it
+		# 初始化牌组
 		self.deck = self.get_new_shuffled_deck()
-		self.player_hand[0] = self.deck.pop()
-		self.player_hand[1] = self.deck.pop()
-		self.bot_hand[0] = self.deck.pop()
-		self.bot_hand[1] = self.deck.pop()
-		self.logger.start_round(self.player_hand, self.bot_hand)
+		
+		# 发玩家手牌
+		self.player_private[0] = random.choice(self.deck)
+		# 确保bot的牌与player不同
+		while True:
+			draw_card = random.choice(self.deck)
+			if draw_card != self.player_private[0]:
+				self.bot_private[0] = draw_card
+				break
+
+		self.logger.start_round(self.player_private, self.bot_private)
 		# handle other vars + alert bot for preparation
 		self.prev_action = 'no_action'
 		self.starting_player = starting_player
 		is_sb = True if self.starting_player == 'bot' else False
-		self.bot.start_new_hand( card1=self.bot_hand[0],
-								 card2=self.bot_hand[1],
-								 player_is_small_blind=is_sb )
+		self.bot.start_new_hand(card=self.bot_private[0],
+								player_is_small_blind=is_sb)
 		self.street = 1
 		# handle small and big blinds + log them + change browser
 		self.player_chips = self.bot_chips = self.stack
@@ -60,15 +64,15 @@ class DoylesGame():
 		self.logger.append_action('bot','raise',self.stack-self.bot_chips)
 		browser.change_chips(self.player_chips, self.bot_chips)
 		# handle board + show it to browser (dont show opponents hand)
-		self.board = ['NO','NO','NO','NO','NO']
-		browser.change_cards(self.board, self.player_hand, bot_cards=['NO','NO'])
+		self.board = ['NO','NO','NO']
+		browser.change_cards(self.board, self.player_private, bot_cards=['NO'])
 		# handle current player + start first players turn
 		self.current_player = self.starting_player
 		self.next_players_turn()
 
 	def game_over(self, winner):
 		# show all cards and show that it is noone's turn
-		browser.change_cards(self.board, self.player_hand, self.bot_hand)
+		browser.change_cards(self.board, self.player_private, self.bot_private)
 		self.current_player = 'game_over'
 		# change chips and update browser
 		if winner == 'player':
@@ -107,15 +111,13 @@ class DoylesGame():
 			self.current_player = 'player'
 		# handle board cards
 		if self.street == 2:
-			self.board[0] = self.deck.pop()
-			self.board[1] = self.deck.pop()
-			self.board[2] = self.deck.pop()
+			self.board[0] = random.choice(self.deck)
 		elif self.street == 3:
-			self.board[3] = self.deck.pop()
+			self.board[1] = random.choice(self.deck)
 		elif self.street == 4:
-			self.board[4] = self.deck.pop()
+			self.board[2] = random.choice(self.deck)
 		# show board to browser (dont show opponents hand)
-		browser.change_cards(self.board, self.player_hand, bot_cards=['NO','NO'])
+		browser.change_cards(self.board, self.player_private, bot_cards=['NO'])
 
 
 	def next_players_turn(self):
@@ -207,12 +209,15 @@ class DoylesGame():
 			# replace with draw card
 			assert(False)
 		board = card_to_string.string_to_board( ''.join(self.board) )
-		player_hand = card_to_string.string_to_board( ''.join(self.player_hand) )
+		player_hand = card_to_string.string_to_board( ''.join(self.player_private) )
 		player_hand_idx = card_tools.get_hand_index(np.sort(player_hand))
-		bot_hand = card_to_string.string_to_board( ''.join(self.bot_hand) )
+		bot_hand = card_to_string.string_to_board( ''.join(self.bot_private) )
 		bot_hand_idx = card_tools.get_hand_index(np.sort(bot_hand))
-		self.terminal_equity.set_board(board)
-		strengths = self.terminal_equity.get_hand_strengths()
+		# self.terminal_equity.set_board(board)
+		# strengths = self.terminal_equity.get_hand_strengths()
+		# player_hand_strength = strengths[ player_hand_idx ]
+		# bot_hand_strength = strengths[ bot_hand_idx ]
+		strengths = evaluator.evaluate_board(board)
 		player_hand_strength = strengths[ player_hand_idx ]
 		bot_hand_strength = strengths[ bot_hand_idx ]
 		print('==========================================')

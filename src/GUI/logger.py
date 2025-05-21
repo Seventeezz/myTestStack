@@ -7,7 +7,7 @@ class Logger():
         self.filepath = filepath
         if not os.path.exists(self.filepath):
             with open(self.filepath, 'a') as f:
-                f.write('player_hand:bot_hand, [player:action:amount, player:action:amount, ...], winner:"winner":won_pot')
+                f.write('player_private:bot_private, [player:action:amount, player:action:amount, ...], winner:"winner":won_pot')
 
 
     def start_round(self, player_hand, bot_hand):

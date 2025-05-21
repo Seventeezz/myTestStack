@@ -28,7 +28,7 @@ class ContinualResolving():
 		self.times = {1:[],2:[],3:[],4:[]}
 
 
-	def start_new_hand(self, card1, card2, player_is_small_blind):
+	def start_new_hand(self, card, player_is_small_blind):
 		''' Re-initializes the continual re-solving to start a new game
 			from the root of the game tree
 		@param: str  :string of 2 chars. first is rank (if letter then only capital) and second suit (lower case)
@@ -37,8 +37,8 @@ class ContinualResolving():
 		(ex of card string: '2c', '6d', 'Jh', 'Ks', 'Ad'. note: for 10 'Ts' is used and not '10s')
 		'''
 		P1, P2 = constants.players.P1, constants.players.P2
-		card1, card2 = card_to_string.string_to_card(card1), card_to_string.string_to_card(card2)
-		hand = np.sort([card1,card2]) # must be ordered
+		card = card_to_string.string_to_card(card)
+		hand = [card] # must be ordered
 		self.prev_street, self.prev_action = 1, None
 		self.player_position = P1 if player_is_small_blind else P2
 		self.holding_hand_idx = card_tools.get_hand_index(hand)

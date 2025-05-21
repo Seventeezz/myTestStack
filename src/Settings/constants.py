@@ -13,15 +13,15 @@ class Constants():
 		# the number of betting rounds in the game
 		self.streets_count = 4
 		# the number of card suits in the deck
-		self.suit_count = 4
+		self.suit_count = 3  # h=红桃, s=黑桃, d=方块
 		# the number of card ranks in the deck
-		self.rank_count = 13
+		self.rank_count = 3  # J, Q, K
 		# the total number of cards in the deck
-		self.card_count = self.suit_count * self.rank_count
+		self.card_count = self.suit_count * self.rank_count  # 9张牌
 		# the number of public cards dealt in the game (revealed after the first betting round)
-		self.board_card_count = [0, 3, 4, 5]
-		self.hand_card_count = 2
-		self.hand_count = 1326 # 52*51/2
+		self.board_card_count = [0,1,2,3]  # 每轮发放公牌数1张
+		self.hand_card_count = 1  # 私牌数量为1张
+		self.hand_count = 9  # 9种可能的私牌组合
 
 		# IDs for each player and chance
 		self.players = Players()

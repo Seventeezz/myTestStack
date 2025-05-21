@@ -2,7 +2,11 @@
 	Evaluates any 7 card combination
 '''
 import numpy as np
-
+from tqdm import tqdm
+import sys
+import os
+# Add the project root directory to sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from Settings.constants import constants
 from Settings.arguments import arguments
 from Game.card_to_string_conversion import card_to_string
@@ -10,10 +14,17 @@ from Game.card_tools import card_tools
 
 class Evaluator():
 	def __init__(self):
-		self._texas_lookup = np.load('src/TerminalEquity/matrices/texas_lookup.npy')
-		self._idx_to_cards = self._create_index_to_cards_matrix()
+		#self._idx_to_cards = self._create_index_to_cards_matrix()
+		# 修改索引映射为单私牌模式
+		self._idx_to_card = self._create_index_to_card_array()
 
-
+	def _create_index_to_card_array(self):
+		''' 生成单私牌索引映射 [I] -> [card] '''
+		HC, CC = constants.hand_count, constants.card_count
+		out = np.zeros([HC], dtype=int)
+		for card in range(CC):
+			out[card] = card  # 直接线性映射（原逻辑为组合数）
+		return out
 	def _create_index_to_cards_matrix(self):
 		''' Returns matrix that maps hand index to players hand
 		@return [I,2] :matrix that maps [hand_idx] -> [card_1, card_2]
@@ -36,41 +47,71 @@ class Evaluator():
 		@return [b]     :batches of evaluated hands strengths
 		(2-7 depends on how many cards are on board (0-5))
 		'''
-		rank = self._texas_lookup[ hands[ : , 0 ] + 54 ]
-		for c in range(1, hands.shape[1]):
-			rank = self._texas_lookup[ hands[ : , c ] + rank + 1 ]
-		rank *= mask
-		rank *= -1
-		return rank
+		# rank = self._texas_lookup[ hands[ : , 0 ] + 54 ]
+		# for c in range(1, hands.shape[1]):
+		# 	rank = self._texas_lookup[ hands[ : , c ] + rank + 1 ]
+		# rank *= mask
+		# rank *= -1
+		# return rank
+		scores = np.zeros_like(hands[:, 0], dtype=float)
+		for i in range(hands.shape[0]):
+			private = hands[i, 0]
+			publics = hands[i, 1:]
+			# 基础分
+			base_score = 4 if private < 3 else (5 if private < 6 else 6)  # J=0-2,Q=3-5,K=6-8
+			# 匹配加分
+			bonus = 0
+			for p in publics:
+				if p == -1: continue  # 未发牌标记
+				if private // 3 == p // 3:  # 相同点数（J/Q/K）
+					bonus += 3
+				if private % 3 == p % 3:  # 相同花色
+					bonus += 1
+			scores[i] = base_score + bonus
+		return scores * mask
 
+
+	# def evaluate_board(self, board):
+	# 	# ''' Evaluates each hand for particular board (or batches of boards)
+	# 	# @param: [0-5] or [b,0-5] :board (or batches of boards)
+	# 	# @return [I]   or [b,I]   :strength of all possible hands (or batches)
+	# 	# '''
+	# 	# HC, CC = constants.hand_count, constants.card_count
+	# 	# SC, HCC = constants.suit_count, constants.hand_card_count
+	# 	# if board.ndim == 2:
+	# 	# 	boards = board
+	# 	# 	batch_size = boards.shape[0]
+	# 	# 	hands = np.zeros([batch_size, HC, boards.shape[1] + HCC], dtype=arguments.int_dtype)
+	# 	# 	hands[ : , : ,  :boards.shape[1] ] = np.repeat(board.reshape([batch_size, 1, boards.shape[1]]), HC, axis=1)
+	# 	# 	hands[ : , : , -2: ] = np.repeat(self._idx_to_cards.reshape([1, HC, HCC]), batch_size, axis=0)
+	# 	# 	mask = np.zeros([batch_size,HC], dtype=bool)
+	# 	# 	for i, b in enumerate(boards):
+	# 	# 		mask[i] = card_tools.get_possible_hands_mask(b)
+	# 	# 	hands = hands.reshape([-1, board.shape[1] + HCC])
+	# 	# 	mask = mask.reshape([-1])
+	# 	# 	return self.evaluate(hands, mask).reshape([batch_size, HC])
+	# 	# elif board.ndim == 1:
+	# 	# 	hands = np.zeros([HC, board.shape[0] + HCC], dtype=arguments.int_dtype)
+	# 	# 	hands[ : ,  :board.shape[0] ] = np.repeat(board.reshape([1,board.shape[0]]), HC, axis=0)
+	# 	# 	hands[ : , -2: ] = self._idx_to_cards.copy()
+	# 	# 	mask = card_tools.get_possible_hands_mask(board)
+	# 	# 	return self.evaluate(hands, mask)
+	# 	# else:
+	# 	# 	assert(False) # weird board dim
 
 	def evaluate_board(self, board):
-		''' Evaluates each hand for particular board (or batches of boards)
-		@param: [0-5] or [b,0-5] :board (or batches of boards)
-		@return [I]   or [b,I]   :strength of all possible hands (or batches)
-		'''
+		''' 适配单私牌评估 '''
 		HC, CC = constants.hand_count, constants.card_count
-		SC, HCC = constants.suit_count, constants.hand_card_count
-		if board.ndim == 2:
-			boards = board
-			batch_size = boards.shape[0]
-			hands = np.zeros([batch_size, HC, boards.shape[1] + HCC], dtype=arguments.int_dtype)
-			hands[ : , : ,  :boards.shape[1] ] = np.repeat(board.reshape([batch_size, 1, boards.shape[1]]), HC, axis=1)
-			hands[ : , : , -2: ] = np.repeat(self._idx_to_cards.reshape([1, HC, HCC]), batch_size, axis=0)
-			mask = np.zeros([batch_size,HC], dtype=bool)
-			for i, b in enumerate(boards):
-				mask[i] = card_tools.get_possible_hands_mask(b)
-			hands = hands.reshape([-1, board.shape[1] + HCC])
-			mask = mask.reshape([-1])
-			return self.evaluate(hands, mask).reshape([batch_size, HC])
-		elif board.ndim == 1:
-			hands = np.zeros([HC, board.shape[0] + HCC], dtype=arguments.int_dtype)
-			hands[ : ,  :board.shape[0] ] = np.repeat(board.reshape([1,board.shape[0]]), HC, axis=0)
-			hands[ : , -2: ] = self._idx_to_cards.copy()
-			mask = card_tools.get_possible_hands_mask(board)
-			return self.evaluate(hands, mask)
-		else:
-			assert(False) # weird board dim
+		# 构建评估矩阵（私牌 + 公牌）
+		max_public = constants.board_card_count[-1]
+		hands = np.full([HC, max_public + 1], -1, dtype=int)  # -1表示空位
+		hands[:, 0] = self._idx_to_card  # 私牌位置
+		if board.size > 0:
+			hands[:, 1:1 + len(board)] = board
+		# 获取合法掩码（需传入对手私牌）
+		# 注意：此处需修改card_tools.get_possible_hands_mask实现
+		mask = card_tools.get_possible_hands_mask(board)
+		return self.evaluate(hands, mask)
 
 
 

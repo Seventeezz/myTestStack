@@ -5,9 +5,9 @@ class TestBot():
     def __init__(self):
         pass
 
-    def start_new_hand(self, card1, card2, player_is_small_blind):
+    def start_new_hand(self, card, player_is_small_blind):
         print('starting new hand:')
-        print(card1, card2, player_is_small_blind)
+        print(card, player_is_small_blind)
 
 
     # def compute_action(self, board_string, player_bet, opponent_bet):
@@ -31,4 +31,4 @@ class TestBot():
         import time
         time.sleep(3)
         print('===PLAYER BET: {} OPP BET: {}'.format(player_bet, opponent_bet))
-        return {'action':'raise', 'amount': int(1000)}
+        return {'action':'raise', 'amount': int(-1)}

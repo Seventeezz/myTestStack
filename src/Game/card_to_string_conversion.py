@@ -9,14 +9,15 @@ from Settings.constants import constants
 class CardToStringConversion():
 	def __init__(self):
 		CC, SC = constants.card_count, constants.suit_count
-		self.suit_table = ['c', 'd', 'h', 's']
-		self.rank_table = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
+		# 按照指定顺序排列：Jh, Js, Jd, Qh, Qs, Qd, Kh, Ks, Kd
+		self.suit_table = ['h', 's', 'd']  # 红桃、黑桃、方块
+		self.rank_table = ['J', 'Q', 'K']  # J, Q, K
 		# card -> rank, suit
 		self.card_to_suit_table = np.zeros([CC], dtype=arguments.int_dtype)
 		self.card_to_rank_table = np.zeros([CC], dtype=arguments.int_dtype)
 		for card in range(CC):
 			self.card_to_suit_table[card] = card % SC
-			self.card_to_rank_table[card] = np.floor(card / SC)
+			self.card_to_rank_table[card] = card // SC
 		# card -> string table
 		self.card_to_string_table = {}
 		for card in range(CC):

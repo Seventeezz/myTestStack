@@ -10,10 +10,13 @@ from Settings.arguments import arguments
 from Settings.constants import constants
 from Game.card_tools import card_tools
 from Game.card_combinations import card_combinations
+from Game.card_to_string_conversion import card_to_string
 from DataGeneration.range_generator import RangeGenerator
+from TerminalEquity.evaluator import evaluator
 from TerminalEquity.terminal_equity import TerminalEquity
 # from NeuralNetwork.value_nn import ValueNn
 from NeuralNetwork.value_nn_torch import ValueNn
+from Lookahead.lookahead import Lookahead
 from Lookahead.resolving import Resolving
 from helper_classes import Node
 
@@ -41,7 +44,8 @@ class DataGeneration():
 		HC, PC = constants.hand_count, constants.players_count
 		# set board in terminal equity and range generator
 		self.term_eq.set_board(board)
-		hand_strengths = self.term_eq.get_hand_strengths() # [I]
+		# hand_strengths = self.term_eq.get_hand_strengths() # [I]
+		hand_strengths = evaluator.evaluate_board(board) # [I] 这里应该用真实的手牌分数值取代表强度，而不是胜负与否的加和
 		self.range_generator.set_board(hand_strengths, board)
 		# init inputs and outputs
 		targets = np.zeros([batch_size, self.target_size], dtype=arguments.dtype)
@@ -92,7 +96,7 @@ class DataGeneration():
 		HC, PC = constants.hand_count, constants.players_count
 		# set board in terminal equity and range generator
 		self.term_eq.set_board(board)
-		hand_strengths = self.term_eq.get_hand_strengths() # [I]
+		hand_strengths = evaluator.evaluate_board(board) # [I] 这里应该用真实的手牌分数值取代表强度，而不是胜负与否的加和
 		self.range_generator.set_board(hand_strengths, board)
 		# init inputs and outputs
 		inputs = np.zeros([batch_size,self.input_size], dtype=arguments.dtype)
@@ -128,7 +132,7 @@ class DataGeneration():
 			nn_input[ : , :self.input_size ] = inputs.copy()
 			nn_input[ : , 0:HC ] *= mask
 			nn_input[ : , HC:2*HC ] *= mask
-			nn.predict(nn_input, out=nn_output)
+			nn.predict(nn_input, out_np=nn_output)
 			targets += nn_output
 		# calculate targets mean (from all next boards)
 		num_possible_boards = card_combinations.count_next_boards_possible_boards(self.street)
@@ -161,8 +165,13 @@ class DataGeneration():
 			for b in range(num_different_boards_per_file):
 				t0 = time.time()
 				# create random board
-				if self.street == 1: board = np.zeros([], dtype=arguments.int_dtype)
-				else: board = np.random.choice(card_count, size=num_board_cards, replace=False)
+				if self.street == 1:
+					board = np.zeros([], dtype=arguments.int_dtype)  # preflop没有公牌
+				else:
+					# 生成可重复的公牌
+					board = np.random.choice(card_count, size=num_board_cards, replace=True)
+					# 确保生成的牌索引在有效范围内
+					assert np.all(board >= 0) and np.all(board < card_count), f"无效卡牌索引：{board}"
 				# init targets, inputs and solve it
 				if approximate == 'root_nodes':
 					inputs, targets = self.solve_root_node(board, batch_size)
@@ -177,7 +186,7 @@ class DataGeneration():
 			fpath = os.path.join(self.dirpath, '{}.{}')
 			np.save(fpath.format('inputs', self.counter), INPUTS.astype(np.float32))
 			np.save(fpath.format('targets', self.counter), TARGETS.astype(np.float32))
-			np.save(fpath.format('boards', self.counter), BOARDS.astype(np.uint8))
+			np.save(fpath.format('boards', self.counter), BOARDS.astype(np.int32))
 			self.counter += 1
 
 
