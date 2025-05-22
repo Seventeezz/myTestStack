@@ -149,21 +149,21 @@ class TerminalEquity():
 		# evaluating all possible last round boards
 		strength = evaluator.evaluate_board(last_round_boards) # [b,I]
 		# strength from player 1 perspective for all the boards and all the card combinations
-		strength_view_1 = strength.reshape([num_boards,HC,1])
+		strength_view_1 = strength.reshape([num_boards, HC, 1])
 		# strength from player 2 perspective
-		strength_view_2 = strength.reshape([num_boards,1,HC])
+		strength_view_2 = strength.reshape([num_boards, 1, HC])
 		#
 		player_possible_mask = (strength < 0).astype(int)
 
 		for i in range(num_boards):
-			possible_mask = player_possible_mask[i].reshape([1,HC]) * player_possible_mask[i].reshape([HC,1])
+			possible_mask = player_possible_mask[i].reshape([1, HC]) * player_possible_mask[i].reshape([HC, 1])
 			# handling hand stregths (winning probs)
 			matrix_mem = (strength_view_1[i] > strength_view_2[i]).astype(int)
-			matrix_mem *= possible_mask[i]
+			matrix_mem *= possible_mask
 			equity_matrix[:,:] += matrix_mem
 
 			matrix_mem = (strength_view_1[i] < strength_view_2[i]).astype(int)
-			matrix_mem *= possible_mask[i]
+			matrix_mem *= possible_mask
 			equity_matrix[:,:] -= matrix_mem
 		# normalize sum
 		num_possible_boards = card_combinations.count_last_boards_possible_boards(street)

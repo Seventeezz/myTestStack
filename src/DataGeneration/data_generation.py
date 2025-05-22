@@ -166,7 +166,7 @@ class DataGeneration():
 				t0 = time.time()
 				# create random board
 				if self.street == 1:
-					board = np.zeros([], dtype=arguments.int_dtype)  # preflop没有公牌
+					board = np.array([], dtype=arguments.int_dtype)  # preflop没有公牌
 				else:
 					# 生成可重复的公牌
 					board = np.random.choice(card_count, size=num_board_cards, replace=True)

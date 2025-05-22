@@ -100,18 +100,44 @@ class Evaluator():
 	# 	# 	assert(False) # weird board dim
 
 	def evaluate_board(self, board):
-		''' 适配单私牌评估 '''
+		'''
+		支持单个board或批量board输入
+		输入:
+			board: shape 为 (n,) 或 (batch, n)
+		输出:
+			shape 为 (HC,) 或 (batch, HC)
+		'''
 		HC, CC = constants.hand_count, constants.card_count
-		# 构建评估矩阵（私牌 + 公牌）
 		max_public = constants.board_card_count[-1]
-		hands = np.full([HC, max_public + 1], -1, dtype=int)  # -1表示空位
-		hands[:, 0] = self._idx_to_card  # 私牌位置
-		if board.size > 0:
-			hands[:, 1:1 + len(board)] = board
-		# 获取合法掩码（需传入对手私牌）
-		# 注意：此处需修改card_tools.get_possible_hands_mask实现
-		mask = card_tools.get_possible_hands_mask(board)
-		return self.evaluate(hands, mask)
+
+		# 新增：处理 street=1时PyTorch tensor 输入
+		if hasattr(board, 'numpy'):  # 检查是否是 tensor
+			board = board.numpy()
+
+		# 新增：确保 board 是 numpy 数组
+		if not isinstance(board, np.ndarray):
+			board = np.array([], dtype=np.int32)
+
+		if isinstance(board, np.ndarray) and board.ndim == 2:
+			# 批量处理
+			num_boards = board.shape[0]
+			results = np.zeros((num_boards, HC), dtype=float)
+			for i in range(num_boards):
+				hands = np.full([HC, max_public + 1], -1, dtype=int)
+				hands[:, 0] = self._idx_to_card
+				if board[i].size > 0:
+					hands[:, 1:1 + len(board[i])] = board[i]
+				mask = card_tools.get_possible_hands_mask(board[i])
+				results[i] = self.evaluate(hands, mask)
+			return results
+		else:
+			# 单个board
+			hands = np.full([HC, max_public + 1], -1, dtype=int)
+			hands[:, 0] = self._idx_to_card
+			if board.size > 0:
+				hands[:, 1:1 + len(board)] = board
+			mask = card_tools.get_possible_hands_mask(board)
+			return self.evaluate(hands, mask)
 
 
 

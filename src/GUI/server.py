@@ -13,8 +13,8 @@ from GUI.client import client as browser
 
 
 
-pystack = TestBot()
-# pystack = ContinualResolving()
+# pystack = TestBot()
+pystack = ContinualResolving()
 logger = Logger('data/logs.csv')
 game = DoylesGame(bot=pystack, logger=logger)
 GAME_IS_RUNNING = False

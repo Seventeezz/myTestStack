@@ -12,14 +12,14 @@ os.chdir('..')
 sys.path.append( os.path.join(os.getcwd(),'src') )
 
 STREET_TO_PHASE = {
-    1: 'pre_flop',
+    1: 'preflop',
     2: 'flop',
     3: 'turn',
     4: 'river'
 }
 
-STREET = 2  # 设置当前训练的street值
-TRAIN_TYPE = 'root_nodes' # 或者'leaf_nodes'
+STREET = 1  # 设置当前训练的street值
+TRAIN_TYPE = 'leaf_nodes' # 或者'leaf_nodes'
 
 CFG = {
     'n_epochs': 100,
@@ -27,7 +27,7 @@ CFG = {
     'learning_rate': 1e-4,
     'n_workers': 0,
     'model_save_path': f'./data/Models/{STREET_TO_PHASE[STREET]}/weights.{TRAIN_TYPE}.pt',
-    "data_path": f".\\data\\TrainSamples\\{STREET_TO_PHASE[STREET]}\\{TRAIN_TYPE}_npy",
+    "data_path": f"./data/TrainSamples/{STREET_TO_PHASE[STREET]}/{TRAIN_TYPE}_npy",
 }
 
 
