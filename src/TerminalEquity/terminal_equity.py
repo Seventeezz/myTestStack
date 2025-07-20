@@ -91,7 +91,7 @@ class TerminalEquity():
 		@return [I] :strength for all hand combinations
 		'''
 		HC = constants.hand_count
-		return np.sum(self.equity_matrix, axis=0)
+		return np.sum(self.equity_matrix, axis=1)
 
 
 	def _set_last_round_equity_matrix(self, equity_matrix, board_cards):
@@ -153,7 +153,7 @@ class TerminalEquity():
 		# strength from player 2 perspective
 		strength_view_2 = strength.reshape([num_boards, 1, HC])
 		#
-		player_possible_mask = (strength < 0).astype(int)
+		player_possible_mask = (strength > 0).astype(int)
 
 		for i in range(num_boards):
 			possible_mask = player_possible_mask[i].reshape([1, HC]) * player_possible_mask[i].reshape([HC, 1])

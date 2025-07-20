@@ -124,7 +124,7 @@ class ContinualResolving():
 			return {'action':'fold', 'amount': -1}
 		elif sampled_bet == constants.actions.ccall:
 			return {'action':'call', 'amount': -1}
-		elif sampled_bet == 20000:
+		elif sampled_bet == 200:
 			return {'action':'allin', 'amount': -1}
 		else:
 			return {'action':'raise', 'amount': sampled_bet}
@@ -140,11 +140,12 @@ class ContinualResolving():
 			print('LOADING RESOLVE FROM CACHE')
 			results = self.cache.get_resolve_results(node.bets)
 		else:
-			self.resolving = Resolving(self.terminal_equity)
+			self.resolving = Resolving(self.terminal_equity, verbose=1)
 			player_range = np.expand_dims(self.player_range, axis=0) # add batch dimension (b=1)
 			results = self.resolving.resolve(node, player_range, opponent_cfvs=self.opponent_cfvs)
-			if node.street == 1:
-				self.cache.store_resolve_results(node.bets, results)
+			# 暂时不用cache
+			# if node.street == 1:
+			# 	self.cache.store_resolve_results(node.bets, results)
 		# (for testing)
 		# if self.verbose != 0:
 		# 	for card1 in range(52):
@@ -195,11 +196,12 @@ class ContinualResolving():
 			# set board
 			self.terminal_equity.set_board(first_node.board)
 			# create re-solving and re-solve the first node
-			resolving = Resolving(self.terminal_equity)
+			resolving = Resolving(self.terminal_equity, verbose=1)
 			uniform_range = np.expand_dims(self.uniform_range, axis=0) # add batch dimension (b=1)
 			results = resolving.resolve(first_node, player_range=uniform_range, opponent_range=uniform_range)
 			# store to cache
-			self.cache.store_resolve_results(bets=[arguments.sb, arguments.bb], results=results)
+			# 暂时不存储cache
+			# self.cache.store_resolve_results(bets=[arguments.sb, arguments.bb], results=results)
 		# store first node results
 		self.starting_cfvs_as_P1 = results.root_cfvs_both_players[0,P2,:] # 0, because batches = 1
 		self.starting_cfvs_as_P2 = results.root_cfvs_both_players[0,P1,:] # 0, because batches = 1

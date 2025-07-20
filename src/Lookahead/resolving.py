@@ -17,7 +17,7 @@ from Tree.tree_cfr import TreeCFR
 
 
 class Resolving():
-	def __init__(self, terminal_equity, verbose=0):
+	def __init__(self, terminal_equity, verbose=1):
 		'''
 		@param: TerminalEquity :object that evaluates rewards with specified board
 		@param: int            :printing outputs if >0
@@ -66,18 +66,18 @@ class Resolving():
 		if self.verbose > 0: print('Resolve time: {}'.format(time.time() - t0))
 		if self.verbose > 0:
 			batch = 0
-			print('printing batch:', batch)
-			print('root_cfvs -', self.resolve_results.root_cfvs.shape)
-			print(np.array2string(self.resolve_results.root_cfvs[batch].reshape([-1])[ 1320:1326 ], suppress_small=True, precision=2))
-			print('root_cfvs_both_players -', self.resolve_results.root_cfvs_both_players.shape)
-			print(np.array2string(self.resolve_results.root_cfvs_both_players[ : , 1-self.lookahead_tree.current_player , : ][batch].reshape([-1])[ 1320:1326 ], suppress_small=True, precision=2))
-			print(np.array2string(self.resolve_results.root_cfvs_both_players[ : , self.lookahead_tree.current_player , : ][batch].reshape([-1])[ 1320:1326 ], suppress_small=True, precision=2))
-			print('achieved_cfvs -', self.resolve_results.achieved_cfvs.shape)
-			print(np.array2string(self.resolve_results.achieved_cfvs[batch].reshape([2,-1])[ 1-self.lookahead_tree.current_player , 1320:1326 ], suppress_small=True, precision=2))
-			print(np.array2string(self.resolve_results.achieved_cfvs[batch].reshape([2,-1])[ self.lookahead_tree.current_player , 1320:1326 ], suppress_small=True, precision=2))
+			# print('printing batch:', batch)
+			# print('root_cfvs -', self.resolve_results.root_cfvs.shape)
+			# print(np.array2string(self.resolve_results.root_cfvs[batch].reshape([-1])[ : ], suppress_small=True, precision=2))
+			# print('root_cfvs_both_players -', self.resolve_results.root_cfvs_both_players.shape)
+			# print(np.array2string(self.resolve_results.root_cfvs_both_players[ : , 1-self.lookahead_tree.current_player , : ][batch].reshape([-1])[ : ], suppress_small=True, precision=2))
+			# print(np.array2string(self.resolve_results.root_cfvs_both_players[ : , self.lookahead_tree.current_player , : ][batch].reshape([-1])[ : ], suppress_small=True, precision=2))
+			# print('achieved_cfvs -', self.resolve_results.achieved_cfvs.shape)
+			print(np.array2string(self.resolve_results.achieved_cfvs[batch].reshape([2,-1])[ 1-self.lookahead_tree.current_player , : ], suppress_small=True, precision=2))
+			print(np.array2string(self.resolve_results.achieved_cfvs[batch].reshape([2,-1])[ self.lookahead_tree.current_player , : ], suppress_small=True, precision=2))
 			print('strategy -', self.resolve_results.strategy.shape)
 			a = self.resolve_results.strategy.shape[0]
-			print(np.array2string(self.resolve_results.strategy[ : , batch, : ].reshape([a,-1])[ : , 1320:1326 ], suppress_small=True, precision=2))
+			print(np.array2string(self.resolve_results.strategy[ : , batch, : ].reshape([a,-1])[ : , : ], suppress_small=True, precision=2))
 		return self.resolve_results
 
 

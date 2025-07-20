@@ -10,7 +10,7 @@ from Game.card_to_string_conversion import card_to_string
 
 
 class ValueNn(nn.Module):
-    def __init__(self, street, pretrained_weights=False, approximate='root_nodes', verbose=1):
+    def __init__(self, street, pretrained_weights=False, approximate='root_nodes', verbose=1, generate_data = True):
         super(ValueNn, self).__init__()
         print(f"Initializing ValueNn for street {street} | torch version: {torch.__version__}")
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -20,7 +20,9 @@ class ValueNn(nn.Module):
         self.model_dir_path = os.path.join(arguments.model_path, street_name)
         model_name = '{}.{}.pt'.format(arguments.model_filename, self.approximate)
         self.model_path = os.path.join(self.model_dir_path, model_name)
-
+        if generate_data:
+            if not os.path.exists(self.model_path):
+                raise FileNotFoundError
         self._set_shapes()
         self.build_model()
         self.to(self.device)

@@ -153,7 +153,7 @@ def play_against_slumbot(bot, slumbot_acc_name, slumbot_acc_password):
             _, opponent_bet = slumbot_utils.acpcify_actions(actions)
             response = bot.compute_action(board_string=board, player_bet=bot_bet, opponent_bet=opponent_bet)
             advice, amount = response['action'], response['amount']
-            if amount == 20000:
+            if amount == 200:
                 advice = 'allin'
 
             if advice == "call":
@@ -166,8 +166,8 @@ def play_against_slumbot(bot, slumbot_acc_name, slumbot_acc_password):
                 fold_button.click()
             elif advice == "allin" and allin_button.is_displayed() and allin_button.is_enabled():
                 allin_button.click()
-                bot_bet = 20000
-            elif advice == 'raise' and opponent_bet * 2 + opponent_bet > 20000:
+                bot_bet = 200
+            elif advice == 'raise' and opponent_bet * 2 + opponent_bet > 200:
                 if check_button.is_displayed() and check_button.is_enabled():
                     check_button.click()
                 elif call_button.is_displayed() and call_button.is_enabled():
@@ -175,7 +175,7 @@ def play_against_slumbot(bot, slumbot_acc_name, slumbot_acc_password):
                 else:
                     print('ERROR: folding')
                     fold_button.click()
-                bot_bet = 20000
+                bot_bet = 200
             elif advice == 'raise' and pot_button.is_displayed() and pot_button.is_enabled():
                 pot_button.click()
                 if bot_bet == 50 and opponent_bet == 100:

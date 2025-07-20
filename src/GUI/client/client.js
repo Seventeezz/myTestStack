@@ -1,6 +1,6 @@
 // setup starting stacks
-// let STACK = 20000
-let STACK = 1200
+let STACK = 200
+// let STACK = 1200
 $("#player_chips").text(STACK)
 $("#opponent_chips").text(STACK)
 

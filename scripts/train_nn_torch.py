@@ -18,11 +18,11 @@ STREET_TO_PHASE = {
     4: 'river'
 }
 
-STREET = 1  # 设置当前训练的street值
-TRAIN_TYPE = 'leaf_nodes' # 或者'leaf_nodes'
+STREET = 2  # 设置当前训练的street值
+TRAIN_TYPE = 'root_nodes' # 或者'leaf_nodes'
 
 CFG = {
-    'n_epochs': 100,
+    'n_epochs': 1000,
     'batch_size': 64,
     'learning_rate': 1e-4,
     'n_workers': 0,
@@ -135,7 +135,8 @@ if __name__ == '__main__':
     model = ValueNn(
         street=STREET,  # 替换成你训练的 street 值（0,1,2,3）
         pretrained_weights=False,
-        approximate='root_nodes'
+        approximate='root_nodes',
+        generate_data=False
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=CFG['learning_rate'])
 

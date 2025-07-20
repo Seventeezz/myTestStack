@@ -44,8 +44,8 @@ class DataGeneration():
 		HC, PC = constants.hand_count, constants.players_count
 		# set board in terminal equity and range generator
 		self.term_eq.set_board(board)
-		# hand_strengths = self.term_eq.get_hand_strengths() # [I]
-		hand_strengths = evaluator.evaluate_board(board) # [I] 这里应该用真实的手牌分数值取代表强度，而不是胜负与否的加和
+		hand_strengths = self.term_eq.get_hand_strengths() # [I]
+		# hand_strengths = evaluator.evaluate_board(board) # [I] 这里应该用真实的手牌分数值取代表强度，而不是胜负与否的加和
 		self.range_generator.set_board(hand_strengths, board)
 		# init inputs and outputs
 		targets = np.zeros([batch_size, self.target_size], dtype=arguments.dtype)
@@ -58,7 +58,7 @@ class DataGeneration():
 		for p in range(PC):
 			inputs[ : , p*HC:(p+1)*HC ] = ranges[p]
 		# generating pot sizes between ante and stack - 0.1
-		pot_intervals = [(100,100), (200,400), (400,2000), (2000,6000), (6000,18000)]
+		pot_intervals = [(1,1), (2,4), (4,20), (20,60), (60,180)]
 		# take random pot size
 		random_interval = pot_intervals[ np.random.randint(len(pot_intervals)) ]
 		random_pot_size = int( np.random.uniform(low=random_interval[0], high=random_interval[1]) )
@@ -96,7 +96,8 @@ class DataGeneration():
 		HC, PC = constants.hand_count, constants.players_count
 		# set board in terminal equity and range generator
 		self.term_eq.set_board(board)
-		hand_strengths = evaluator.evaluate_board(board) # [I] 这里应该用真实的手牌分数值取代表强度，而不是胜负与否的加和
+		hand_strengths = self.term_eq.get_hand_strengths()
+		# hand_strengths = evaluator.evaluate_board(board) # [I] 这里应该用真实的手牌分数值取代表强度，而不是胜负与否的加和
 		self.range_generator.set_board(hand_strengths, board)
 		# init inputs and outputs
 		inputs = np.zeros([batch_size,self.input_size], dtype=arguments.dtype)
@@ -109,7 +110,7 @@ class DataGeneration():
 		for p in range(PC):
 			inputs[ : , p*HC:(p+1)*HC ] = ranges[p]
 		# generating pot sizes between ante and stack - 0.1
-		pot_intervals = [(100,100), (200,400), (400,2000), (2000,6000), (6000,18000)]
+		pot_intervals = [(1,1), (2,4), (4,20), (20,60), (60,180)]
 		# take random pot size
 		random_interval = pot_intervals[ np.random.randint(len(pot_intervals)) ]
 		random_pot_size = int( np.random.uniform(low=random_interval[0], high=random_interval[1]) )

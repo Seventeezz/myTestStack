@@ -125,30 +125,21 @@ class NextRoundValue():
 		PC, HC, batch_size = constants.players_count, constants.hand_count, self.batch_size
 		assert(ranges.shape[0] == self.batch_size)
 		self.iter += 1
-		
-		# 如果两个模型都不可用，使用简单的替代方案
-		if self.next_street_nn is None and self.leaf_nodes_nn is None:
-			# 返回一个简单的均匀分布
-			return np.zeros_like(ranges)
-			
-		# 检查是近似叶子还是下一街节点 + 对其进行平均
-		if self.iter > self.num_leaf_nodes_approximation_iters and self.next_street_nn is not None:
+		# check to approximate leafs or next street nodes + avg them
+		if self.iter > self.num_leaf_nodes_approximation_iters:
 			BC = self.next_boards_count
 			neural_network = self.next_street_nn
 			nn_inputs = self.next_round_inputs
 			nn_outputs = self.next_round_values
 			mask = self.next_boards_mask
 			sum_normalization = self.root_nodes_sum_normalization
-		elif self.leaf_nodes_nn is not None:
+		else:
 			BC = 1
 			neural_network = self.leaf_nodes_nn
 			nn_inputs = self.current_round_inputs
 			nn_outputs = self.current_round_values
 			mask = self.current_board_mask
 			sum_normalization = self.leaf_nodes_sum_normalization
-		else:
-			# 如果两个模型都不可用，返回零值
-			return np.zeros_like(ranges)
 		# copy ranges for all boards (BC)
 		ranges = ranges.reshape([batch_size,1,PC,HC]) # [b,P,I] -> [b,1,P,I]
 		ranges = np.repeat(ranges, BC, axis=1) # [b,1,P,I] -> [b,B,P,I]

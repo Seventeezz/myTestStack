@@ -16,10 +16,10 @@ class DoylesGame():
 		self.terminal_equity = TerminalEquity() # evaluator
 		self.player_private = ['NO']
 		self.bot_private = ['NO']
-		self.stack = 20000
-		self.ante = 100
-		self.sb = 50
-		self.bb = 100
+		self.stack = 200
+		self.ante = 2
+		self.sb = self.ante // 2
+		self.bb = self.ante
 		self.street = 0
 
 	def get_new_shuffled_deck(self):

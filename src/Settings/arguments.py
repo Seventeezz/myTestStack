@@ -16,11 +16,11 @@ class Parameters():
 		# list of pot-scaled bet sizes to use in tree
 		self.bet_sizing = { 'preflop':[1], 'flop':[0.5], 'turn':[1], 'river':[1,2] }
 		# the size of the game's ante, in chips
-		self.ante = 100
-		self.sb = 50
-		self.bb = 100
+		self.ante = 2
+		self.sb = self.ante // 2
+		self.bb = self.ante
 		# the size of each player's stack, in chips
-		self.stack = 20000
+		self.stack = 200
 		# NEURAL NETWORK
 		self.XLA = True
 		# path to the neural net model
@@ -31,23 +31,23 @@ class Parameters():
 		# the neural net architecture
 		self.num_neurons = [500,500,500,500] # must be size of num_layers
 		self.learning_rate = 1e-4
-		self.batch_size = 1024 # 1024
+		self.batch_size = 1024  # 原为1024
 		self.num_epochs = 50 
 		# how often to save the model during training
 		self.save_epoch = 2
 		# how many epochs to train for
 		self.epoch_count = 10
 		# TF RECORDS
-		self.tfrecords_batch_size = 64 # ~200MB   1024*10
+		self.tfrecords_batch_size = 64  # ~200MB   原为1024*10
 		# DATA GENERATION
 		# path to the solved poker situation data used to train the neural net
 		self.data_path = './data/TrainSamples/'
 		# self.data_path = r'D:\Datasets\Pystack\NoLimitTexasHoldem'
 		# the number of iterations that DeepStack runs CFR for
-		self.cfr_iters = 8 # 300
+		self.cfr_iters = 300 # 原为300
 		# the number of preliminary CFR iterations which DeepStack doesn't
 		# factor into the average strategy (included in cfr_iters)
-		self.cfr_skip_iters = 5 # 0
+		self.cfr_skip_iters = 0 # 原为0
 		# the number of starting iters used on approximating leaf nodes
 		# after these iterations next street's root nodes are approximated and averaged
 		# no need for 'river', because you get values from leaf nodes anyway (using terminal equity)
@@ -57,13 +57,13 @@ class Parameters():
 			'turn':200
 		}
 		# how many solved poker situations are generated
-		self.gen_different_boards = 5
+		self.gen_different_boards = 5000  # 原为 2
 		# how many poker situations are solved simultaneously during
 		# data generation
 		self.gen_batch_size = 100
 		# TOTAL SITUATIONS = different_boards x batch_size
 		# how many files to create (single element = ~22kB)
-		self.gen_num_files = 5
+		self.gen_num_files = 5 #原为1
 
 		assert(self.gen_different_boards % self.gen_num_files == 0)
 
