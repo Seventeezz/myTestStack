@@ -321,8 +321,8 @@ class Lookahead():
 		fold_ranges = self._get_ranges_from_fold_nodes() # [TN x b, P, I]
 		# calculate cfvs for all terminal nodes and both players
 		# [TN x b x P, I] = dot_product( [TN x b x P, I], [I,I] )
-		call_cfvs = np.dot(call_ranges.reshape([-1,HC]), equity_matrix)
-		fold_cfvs = np.dot(fold_ranges.reshape([-1,HC]), fold_matrix)
+		call_cfvs = -np.dot(call_ranges.reshape([-1,HC]), equity_matrix)
+		fold_cfvs = -np.dot(fold_ranges.reshape([-1,HC]), fold_matrix)
 		# no need to reshape cfvs. tensors are reshaped inside store functions
 		self._store_cfvs_to_call_nodes(call_cfvs)
 		self._store_cfvs_to_fold_nodes(fold_cfvs)
