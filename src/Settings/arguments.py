@@ -8,7 +8,7 @@ class Parameters():
 	def __init__(self):
 		# the tensor datatype used for storing DeepStack's internal data
 		self.dtype = np.float32
-		self.int_dtype = np.int16
+		self.int_dtype = np.int32
 		# cached results path (caching only first street)
 		self.cache_path = './data/cache/'
 		# self.cache_path = r'D:\Datasets\Pystack\cache'

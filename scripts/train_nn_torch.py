@@ -5,6 +5,7 @@ from torch.utils.data import Dataset
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 import sys
+import argparse
 
 from Game.card_tools import card_tools
 from NeuralNetwork.value_nn_torch import ValueNn
@@ -16,18 +17,6 @@ STREET_TO_PHASE = {
     2: 'flop',
     3: 'turn',
     4: 'river'
-}
-
-STREET = 2  # 设置当前训练的street值
-TRAIN_TYPE = 'root_nodes' # 或者'leaf_nodes'
-
-CFG = {
-    'n_epochs': 1000,
-    'batch_size': 64,
-    'learning_rate': 1e-4,
-    'n_workers': 0,
-    'model_save_path': f'./data/Models/{STREET_TO_PHASE[STREET]}/weights.{TRAIN_TYPE}.pt',
-    "data_path": f"./data/TrainSamples/{STREET_TO_PHASE[STREET]}/{TRAIN_TYPE}_npy",
 }
 
 
@@ -123,6 +112,24 @@ def evaluate(model, loader):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--street', type=int, default=2, help='设置当前训练的street值（1: preflop, 2: flop, 3: turn, 4: river）')
+    parser.add_argument('--train_type', type=str, default='root_nodes', choices=['root_nodes', 'leaf_nodes'], help='训练类型')
+    args = parser.parse_args()
+
+    STREET = args.street
+    TRAIN_TYPE = args.train_type
+
+    # 下面的 CFG 也要用新的 STREET 和 TRAIN_TYPE
+    CFG = {
+        'n_epochs': 100,
+        'batch_size': 64,
+        'learning_rate': 1e-4,
+        'n_workers': 0,
+        'model_save_path': f'./data/Models/{STREET_TO_PHASE[STREET]}/weights.{TRAIN_TYPE}.pt',
+        "data_path": f"./data/TrainSamples/{STREET_TO_PHASE[STREET]}/{TRAIN_TYPE}_npy",
+    }
+
     dataset = PokerDataset(CFG['data_path'])
     val_size = int(0.1 * len(dataset))
     train_size = len(dataset) - val_size
@@ -136,7 +143,7 @@ if __name__ == '__main__':
         street=STREET,  # 替换成你训练的 street 值（0,1,2,3）
         pretrained_weights=False,
         approximate='root_nodes',
-        generate_data=False
+        trainning_mode=True
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=CFG['learning_rate'])
 

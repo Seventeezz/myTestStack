@@ -7,6 +7,7 @@ import numpy as np
 import time
 
 from Game.card_to_string_conversion import card_to_string
+from Settings import translations
 from TerminalEquity.terminal_equity import TerminalEquity
 from Lookahead.resolving import Resolving
 from Settings.arguments import arguments
@@ -48,6 +49,24 @@ class ContinualResolving():
 		start_cfvs = self.starting_cfvs_as_P1 if self.player_position == P2 else self.starting_cfvs_as_P2
 		self.opponent_cfvs = start_cfvs.copy()
 
+	def start_new_hand_for_race(self, my_country, player_is_small_blind):
+		''' Re-initializes the continual re-solving to start a new game
+			from the root of the game tree
+		@param: str  :string of 2 chars. first is rank (if letter then only capital) and second suit (lower case)
+		@param: str  :string of 2 chars. first is rank (if letter then only capital) and second suit (lower case)
+		@param: bool :is this player starting with small blind
+		(ex of card string: '2c', '6d', 'Jh', 'Ks', 'Ad'. note: for 10 'Ts' is used and not '10s')
+		'''
+		P1, P2 = constants.players.P1, constants.players.P2
+		hand = [translations["country_des"][my_country]]
+		self.prev_street, self.prev_action = 1, None
+		self.player_position = P1 if player_is_small_blind else P2
+		self.holding_hand_idx = card_tools.get_hand_index(hand)
+		self.terminal_equity.set_board(np.zeros([])) # 设置空公共牌
+		# 初始化玩家手牌范围和对手的反事实值
+		self.player_range = self.uniform_range.copy()
+		start_cfvs = self.starting_cfvs_as_P1 if self.player_position == P2 else self.starting_cfvs_as_P2
+		self.opponent_cfvs = start_cfvs.copy()
 
 	def _get_chance_action_cfv(self, current_board, resolve_results, action_idx):
 		''' Gives the average counterfactual values for the opponent during re-solving after a chance event
@@ -68,6 +87,7 @@ class ContinualResolving():
 				board_cfvs = next_street_cfvs[:,i,:,:]
 		# get next street root node outputs. shape = [self.num_pot_sizes * self.batch_size, P, I]
 		# convert action idx to batch index
+		resolve_results.action_to_index.setdefault(-1, 0)  # 确保action_to_index包含-1键，默认值为0
 		action = resolve_results.actions[action_idx]
 		batch_index = resolve_results.action_to_index[action]
 		# get cfvs for current player, given some action
@@ -129,6 +149,59 @@ class ContinualResolving():
 		else:
 			return {'action':'raise', 'amount': sampled_bet}
 
+	def compute_action_for_race(self, board_string, player_bet, opponent_bet):
+		''' Re-solves a node and chooses the re-solving player's next action
+		@param: str  :string of board cards (ex: 'AhKsQdJhTs9c')
+		@param: int  :current bet of this player
+		@param: int  :current bet of player's opponent
+		@return dict :{ "action":"fold"/"call"/"raise"/"allin", "amount":int }
+		'''
+		t0 = time.time()
+		node = self._create_node_for_race(board_string, player_bet, opponent_bet)
+		# if street changed (last node was chance node), then update cfvs and ranges
+		if self.prev_street+1 == node.street:
+			# opponent cfvs: if the street has changed, the resonstruction API simply gives us CFVs
+			self.opponent_cfvs = self._get_chance_action_cfv(node.board, self.prev_results, self.prev_action)
+			# player range: if street has change, we have to mask out the colliding hands
+			mask = card_tools.get_possible_hands_mask(node.board)
+			self.player_range *= mask						# mask available combinations given particular board
+			self.player_range /= self.player_range.sum()	# normalize
+			# set terminal equity for new board
+			self.terminal_equity.set_board(node.board)
+		# resolve and sample bet
+		results = self._resolve(node)
+		# sample bet
+		strategy = results.strategy[ : , 0 , self.holding_hand_idx ] # [A,b,I] -> [A], here b = 1
+		assert(abs(1 - strategy.sum()) < 0.001)
+		print(strategy)
+		print(results.actions)
+		action_idx = np.random.choice(np.arange(len(strategy)), p=strategy)
+		sampled_bet = results.actions[action_idx]
+		print( "strat: {}, bets: {}, sampled_bet: {}".format(np.array2string(strategy, suppress_small=True, precision=3), results.actions, sampled_bet) )
+		# update the invariants based on our action # [I] = [I]
+		self.opponent_cfvs = results.children_cfvs[action_idx,0,:] # [A,b,I], here b = 1
+		# [I] *= [I]
+		self.player_range *= results.strategy[action_idx,0,:] # [A,b,I], here b = 1
+		self.player_range /= self.player_range.sum()	# normalize
+		# update history variables
+		self.prev_results = results
+		self.prev_action = action_idx
+		self.prev_bets = node.bets
+		self.prev_street = node.street
+		# return action
+		self.times[node.street].append(time.time()-t0)
+		for s in range(1,5):
+			if len(self.times[s]) > 2:
+				print(s, np.mean(self.times[s][1:]), np.std(self.times[s][1:]))
+
+		if sampled_bet == constants.actions.fold:
+			return {'action': 'withdraw', 'amount': -1}
+		elif sampled_bet == constants.actions.ccall:
+			return {'action': 'respond', 'amount': -1}
+		elif sampled_bet == 200:
+			return {'action': 'commit_all', 'amount': -1}
+		else:
+			return {'action': 'escalate', 'amount': sampled_bet}
 
 	def _resolve(self, node):
 		''' Creates lookahead and solves it
@@ -177,6 +250,26 @@ class ContinualResolving():
 				node.num_bets, node.street, node.current_player, node.board ))
 		return node
 
+	def _create_node_for_race(self, board, player_bet, opponent_bet):
+		''' Creates root node out of following inputs
+		@param: str  :string of board cards (ex: 'AhKsQdJhTs9c')
+		@param: int  :current bet of this player
+		@param: int  :current bet of player's opponent
+		@return Node :node object representation
+		'''
+		P1, P2 = constants.players.P1, constants.players.P2
+		node = Node()
+		node.board = board
+		node.street = card_tools.board_to_street(node.board)
+		node.current_player = self.player_position
+		# note: P1 is always playing small blind, P2 - big blind, but players are sometimes swaped
+		P1_bet, P2_bet = (player_bet,opponent_bet) if self.player_position == P1 else (opponent_bet,player_bet)
+		node.bets = np.array([P1_bet, P2_bet], dtype=arguments.dtype)
+		# bets_are_initial = (P1_bet == sb and P2_bet == bb) or (P1_bet == bb and P2_bet == sb)
+		node.num_bets = 1 if self.prev_street == -1 else 0
+		print('created node: bets: {}/{} num_bets: {} street: {} i: {} board: {}'.format(node.bets[0],node.bets[1],
+				node.num_bets, node.street, node.current_player, node.board ))
+		return node
 
 	def _compute_initial_opponent_cfvs(self):
 		''' Solves a depth-limited lookahead from the first node of the game
