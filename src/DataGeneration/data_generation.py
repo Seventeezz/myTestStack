@@ -5,6 +5,7 @@ import os
 import time
 import numpy as np
 from tqdm import tqdm
+import itertools
 
 from Settings.arguments import arguments
 from Settings.constants import constants
@@ -149,31 +150,32 @@ class DataGeneration():
 		@param: str :to approximate current round "root_nodes"/"leaf_nodes"
 		@param: int :starting index for naming files
 		'''
-		card_count = constants.card_count
-		# set up scalar variables
 		self.street = street
 		num_board_cards = constants.board_card_count[self.street-1]
 		batch_size = arguments.gen_batch_size
-		num_different_boards = arguments.gen_different_boards
-		total_situations = batch_size * num_different_boards
 		num_files = arguments.gen_num_files
-		num_batches_in_file = total_situations // num_files
-		num_different_boards_per_file = num_different_boards // num_files
-		for self.counter in range(starting_idx,  starting_idx + num_files):
+
+		# 生成所有可能的公牌组
+		if self.street == 1:
+			all_boards = [np.array([], dtype=arguments.int_dtype)]
+		else:
+			all_boards = [np.array(board, dtype=arguments.int_dtype) for board in itertools.product(range(9), repeat=num_board_cards)]
+
+		total_boards = len(all_boards)
+		num_batches_in_file = (total_boards * batch_size) // num_files
+
+		for self.counter in range(starting_idx, starting_idx + num_files):
 			TARGETS = np.zeros([num_batches_in_file, self.target_size], dtype=arguments.dtype)
-			INPUTS =  np.zeros([num_batches_in_file, self.input_size],  dtype=arguments.dtype)
-			BOARDS = np.zeros([num_different_boards_per_file, num_board_cards], dtype=arguments.dtype)
-			for b in range(num_different_boards_per_file):
+			INPUTS = np.zeros([num_batches_in_file, self.input_size], dtype=arguments.dtype)
+			BOARDS = np.zeros([num_batches_in_file // batch_size, num_board_cards], dtype=arguments.dtype)
+
+			# 计算当前文件要处理的board范围
+			start_idx = (self.counter - starting_idx) * (total_boards // num_files)
+			end_idx = (self.counter - starting_idx + 1) * (total_boards // num_files)
+			boards_this_file = all_boards[start_idx:end_idx]
+
+			for b, board in enumerate(boards_this_file):
 				t0 = time.time()
-				# create random board
-				if self.street == 1:
-					board = np.array([], dtype=arguments.int_dtype)  # preflop没有公牌
-				else:
-					# 生成可重复的公牌
-					board = np.random.choice(card_count, size=num_board_cards, replace=True)
-					# 确保生成的牌索引在有效范围内
-					assert np.all(board >= 0) and np.all(board < card_count), f"无效卡牌索引：{board}"
-				# init targets, inputs and solve it
 				if approximate == 'root_nodes':
 					inputs, targets = self.solve_root_node(board, batch_size)
 				else: # approximate == 'leaf_nodes'

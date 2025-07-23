@@ -56,16 +56,13 @@ class Parameters():
 			'flop':200,
 			'turn':200
 		}
-		# how many solved poker situations are generated
-		self.gen_different_boards = 5000  # 原为 2
 		# how many poker situations are solved simultaneously during
 		# data generation
 		self.gen_batch_size = 100
 		# TOTAL SITUATIONS = different_boards x batch_size
 		# how many files to create (single element = ~22kB)
-		self.gen_num_files = 5 #原为1
+		self.gen_num_files = 1 #原为1
 
-		assert(self.gen_different_boards % self.gen_num_files == 0)
 
 
 
