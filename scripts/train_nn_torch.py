@@ -115,6 +115,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--street', type=int, default=2, help='设置当前训练的street值（1: preflop, 2: flop, 3: turn, 4: river）')
     parser.add_argument('--train_type', type=str, default='root_nodes', choices=['root_nodes', 'leaf_nodes'], help='训练类型')
+    parser.add_argument('--test_mode', action='store_true', help='测试模式：只保存随机初始化模型')
     args = parser.parse_args()
 
     STREET = args.street
@@ -129,6 +130,17 @@ if __name__ == '__main__':
         'model_save_path': f'./data/Models/{STREET_TO_PHASE[STREET]}/weights.{TRAIN_TYPE}.pt',
         "data_path": f"./data/TrainSamples/{STREET_TO_PHASE[STREET]}/{TRAIN_TYPE}_npy",
     }
+
+    if args.test_mode:
+        model = ValueNn(
+            street=STREET,
+            pretrained_weights=False,
+            approximate='root_nodes',
+            trainning_mode=True
+        )
+        torch.save(model.state_dict(), CFG["model_save_path"])
+        print(f"✅ 测试模式：已保存随机初始化模型到 {CFG['model_save_path']}")
+        exit(0)
 
     dataset = PokerDataset(CFG['data_path'])
     val_size = int(0.1 * len(dataset))

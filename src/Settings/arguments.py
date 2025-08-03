@@ -4,6 +4,9 @@
 import os
 import numpy as np
 
+def get_bet_sizing(min_val, max_val, num):
+    return list(np.linspace(min_val, max_val, num))
+
 class Parameters():
 	def __init__(self):
 		# the tensor datatype used for storing DeepStack's internal data
@@ -14,7 +17,18 @@ class Parameters():
 		# self.cache_path = r'D:\Datasets\Pystack\cache'
 		# GAME INFORMATION
 		# list of pot-scaled bet sizes to use in tree
-		self.bet_sizing = { 'preflop':[1], 'flop':[0.5], 'turn':[1], 'river':[1,2] }
+		self.bet_sizing = {
+			'preflop': [1,2,4,8],
+			'flop': [1,2,4,8],
+			'turn': [1,2,4,8],
+			'river': [1,2,4,8,16]
+		}
+		# self.bet_sizing = {
+		# 	'preflop': [0.5, 1],  # 模拟 2bb 和 4bb，加注层级足够覆盖 open 和 3bet
+		# 	'flop': [0.5, 1],  # 小、中、大下注（覆盖 Cbet, semi-bluff, polar value） [0.33, 0.66, 1]
+		# 	'turn': [0.66, 1.25],  # 中/大注，适合构建压力
+		# 	'river': [0.5, 1, 2]  # blocker bluff / std value / polar shove
+		# }
 		# the size of the game's ante, in chips
 		self.ante = 2
 		self.sb = self.ante // 2
@@ -52,9 +66,9 @@ class Parameters():
 		# after these iterations next street's root nodes are approximated and averaged
 		# no need for 'river', because you get values from leaf nodes anyway (using terminal equity)
 		self.leaf_nodes_iterations = {
-			'preflop':280,
-			'flop':200,
-			'turn':200
+			'preflop':300,
+			'flop':300,
+			'turn':300
 		}
 		# how many poker situations are solved simultaneously during
 		# data generation

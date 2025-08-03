@@ -24,6 +24,7 @@ class CardTools():
 		@return [52+4+13] :vector of shape [total cards in deck + suit count + rank count]
 		'''
 		num_ranks, num_suits, num_cards = constants.rank_count, constants.suit_count, constants.card_count
+		max_board_size = constants.board_card_count[-1]
 		# init output
 		out = np.zeros([num_cards + num_suits + num_ranks], dtype=np.float32)
 		if board.ndim == 0 or board.shape[0] == 0: # no cards were placed
@@ -31,22 +32,26 @@ class CardTools():
 		# 确保卡牌索引在0-8范围内
 		assert((board >= 0).all() and (board < num_cards).all()), f"Invalid card indices: {board} must be in range [0,{num_cards})"
 		# init vars
-		one_hot_board = np.zeros([num_cards], dtype=np.float32)
+		# one_hot_board = np.zeros([num_cards], dtype=np.float32)
+		board_hot_board = np.zeros([num_cards], dtype=np.float32) # 9
 		suit_counts = np.zeros([num_suits], dtype=np.float32)
 		rank_counts = np.zeros([num_ranks], dtype=np.float32)
 		# encode cards, so that all ones show what card is placed
-		one_hot_board[ board ] = 1
+		# one_hot_board[ board ] = 1
 		# count number of different suits and ranks on board
 		for card in board:
+			board_hot_board[card] += 1
 			suit = card_to_string.card_to_suit(card)
 			rank = card_to_string.card_to_rank(card)
 			suit_counts[ suit ] += 1
 			rank_counts[ rank ] += 1
 		# normalize counts
-		rank_counts /= num_ranks
-		suit_counts /= num_suits
+		if len(board) > 0:
+			board_hot_board /= max_board_size
+			rank_counts /= num_ranks
+			suit_counts /= num_suits
 		# combine all arrays and return
-		out[ :num_cards ] = one_hot_board
+		out[ :num_cards ] = board_hot_board
 		out[ num_cards:num_cards+num_suits ] = suit_counts
 		out[ num_cards+num_suits: ] = rank_counts
 		return out

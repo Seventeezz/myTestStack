@@ -17,7 +17,7 @@ for round_idx in range(max_rounds):
         subprocess.run([
             "python", "generate_data.py",
             "--street", str(street),
-            "--approximate", approximate,
+            "--approximate", 'root_nodes',
             "--start-idx", str(start_idx)
         ], check=True)
 
@@ -26,8 +26,25 @@ for round_idx in range(max_rounds):
         subprocess.run([
             "python", "train_nn_torch.py",
             "--street", str(street),
-            "--train_type", train_type
+            "--train_type", 'root_nodes'
         ], check=True)
-    print(f"\n=== 第 {round_idx+1} 轮完成 ===\n")
+    # for street in streets:
+    #     # 1. 生成数据
+    #     print(f"正在生成 street={street} 的训练数据，start-idx={start_idx} ...")
+    #     subprocess.run([
+    #         "python", "generate_data.py",
+    #         "--street", str(street),
+    #         "--approximate", approximate,
+    #         "--start-idx", str(start_idx)
+    #     ], check=True)
+    #
+    #     # 2. 训练模型
+    #     print(f"正在训练 street={street} 的模型...")
+    #     subprocess.run([
+    #         "python", "train_nn_torch.py",
+    #         "--street", str(street),
+    #         "--train_type", train_type
+    #     ], check=True)
+    # print(f"\n=== 第 {round_idx+1} 轮完成 ===\n")
 
 print("全部流程已自动完成！") 

@@ -123,6 +123,7 @@ class ContinualResolving():
 		print(strategy)
 		print(results.actions)
 		action_idx = np.random.choice(np.arange(len(strategy)), p=strategy)
+		# action_idx = 1 # 测试用，一直fold
 		sampled_bet = results.actions[action_idx]
 		print( "strat: {}, bets: {}, sampled_bet: {}".format(np.array2string(strategy, suppress_small=True, precision=3), results.actions, sampled_bet) )
 		# update the invariants based on our action # [I] = [I]
@@ -279,6 +280,7 @@ class ContinualResolving():
 			so opponent cfvs are not necessary for solving.
 			Save in `starting_cfvs_as_P1` and `starting_cfvs_as_P2`
 		'''
+		tmpVerbose = self.verbose
 		P1, P2 = constants.players.P1, constants.players.P2
 		if self.cache.exists(bets=[arguments.sb, arguments.bb]):
 			results = self.cache.get_resolve_results(bets=[arguments.sb, arguments.bb])
@@ -291,6 +293,7 @@ class ContinualResolving():
 			# create re-solving and re-solve the first node
 			resolving = Resolving(self.terminal_equity, verbose=1)
 			uniform_range = np.expand_dims(self.uniform_range, axis=0) # add batch dimension (b=1)
+			self.verbose = 0
 			results = resolving.resolve(first_node, player_range=uniform_range, opponent_range=uniform_range)
 			# store to cache
 			# 暂时不存储cache
@@ -298,6 +301,7 @@ class ContinualResolving():
 		# store first node results
 		self.starting_cfvs_as_P1 = results.root_cfvs_both_players[0,P2,:] # 0, because batches = 1
 		self.starting_cfvs_as_P2 = results.root_cfvs_both_players[0,P1,:] # 0, because batches = 1
+		self.verbose = tmpVerbose
 
 
 

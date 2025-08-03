@@ -94,16 +94,16 @@ def start_game():
 
 @socketio.on('player_send_action')
 def player_send_action(action, amount):
-    try:
-        print('---- PLAYER ACTION: {} {} ----'.format(action, amount))
-        if game.current_player == 'player':
-            success, action, amount = game.player_action(action, amount)
-            return {'code': 'success', 'action': action, 'amount': amount}
-        else:
-            return {'code': 'not_your_turn'}
-    except Exception as e:
-        print(f"Error in player_send_action: {str(e)}")
-        return {'code': 'error', 'message': str(e)}
+    # try:
+    print('---- PLAYER ACTION: {} {} ----'.format(action, amount))
+    if game.current_player == 'player':
+        success, action, amount = game.player_action(action, amount)
+        return {'code': 'success', 'action': action, 'amount': amount}
+    else:
+        return {'code': 'not_your_turn'}
+    # except Exception as e:
+    #     print(f"Error in player_send_action: {str(e)}")
+    #     return {'code': 'error', 'message': str(e)}
 
 @socketio.on('player_received_end_game_msg')
 def player_received_end_game_msg():

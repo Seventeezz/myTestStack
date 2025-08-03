@@ -49,6 +49,8 @@ class DoylesGame():
 		self.prev_action = 'no_action'
 		self.starting_player = starting_player
 		is_sb = True if self.starting_player == 'bot' else False
+		# is_sb = True # 测试用，deepstack后手
+		# is_sb = False # 测试用，人类后手
 		self.bot.start_new_hand(card=self.bot_private[0],
 								player_is_small_blind=is_sb)
 		self.street = 1
